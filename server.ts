@@ -1,10 +1,15 @@
-//Phase 1 - Minimal server & ping
 
 import express from "express";
+import { z } from 'zod';
 
 //express() creates the app.
 const app = express();
 const PORT = 3000;
+//Middleware for JSON parsing.
+app.use(express.json()); 
+
+
+//Phase 1 - Minimal server & ping
 
 //app.get() defines a GET route.
 //res.json() sends a JSON response.
@@ -12,16 +17,12 @@ app.get("/ping", (req, res) => {
     res.json( {message: "pong"});
 });
 
-//app.listen() starts the server.
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
 
 
 
 //Phase 2 - Fetch random user
 
-import { z } from 'zod';
+
 
 // Schema for the RandomUser API.
 //z.object() and z.array() define the expected structure.
@@ -63,4 +64,32 @@ app.get('/random-person', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch data' });
   }
+});
+
+
+//Phase 3: User POST Route
+
+//Successful test data
+const user = { name: "Alice", age: 30, email: "SanDra@test.com"};
+
+const UserSchema = z.object({
+
+  //Name length, age optional with default 28.
+  name: z.string().min(3).max(12),
+  age: z.number().min(18).max(100).optional().default(28),
+  email: z.string().email().toLowerCase(),  // This corrects email to lowercase.
+});
+
+app.post('/users', (req, res) => {
+  const newUser = UserSchema.safeParse(req.body);
+  if (!newUser.success) {
+    return res.status(400).json({ error: 'Validation failed', details: newUser.error });
+  } else {
+    res.status(201).json(newUser.data);  // Returns only the validated data
+  }
+});
+
+// Start the server (only use once at the end)
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
