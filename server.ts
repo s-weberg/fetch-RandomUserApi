@@ -46,6 +46,7 @@ app.get('/random-person', async (req, res) => {
     const response = await fetch('https://randomuser.me/api/');
     const data = await response.json();
 
+
     // Validate with Zod
     //safeParse() checks data, without throwing errors.
     const parsedData = RandomUserSchema.safeParse(data);
@@ -90,8 +91,65 @@ app.post('/users', (req, res) => {
   }
 });
 
-// Start the server (only use once at the end)
+
+
+//Challenge
+//Zod schema for login and registered date.
+const LoginSchema = z.object({
+  results: z.array(
+    z.object({
+      login: z.object({
+        username: z.string(),
+      }),
+      registered: z.object({
+        date: z.string().refine((val) => !isNaN(Date.parse(val)), {
+          message: 'Invalid date format',
+        }),
+      }),
+    })
+  ),
+});
+
+//Handle GET request for random-login. Fetches and return user details.
+
+app.get('/random-login', async (req, res) => {
+  try {
+    console.log('Starting to get data from the random user website...'); 
+    const response = await fetch('https://randomuser.me/api/'); // Fetches data from website
+    console.log('Response data:', response.status); // Show if the website worked
+    const data = await response.json(); 
+    console.log('Data status:', JSON.stringify(data, null, 2)); // Show the full data
+
+
+    const parsedData = LoginSchema.safeParse(data);
+    if (!parsedData.success) {
+      console.log('Validation error', parsedData.error); // Show why it failed
+      return res.status(500).json({ error: 'Invalid data from API', details: parsedData.error });
+    }
+
+    // User/date info
+    const user = parsedData.data.results[0];
+    const registeredDate = new Date(user.registered.date); // Turn the date string into a date
+    if (isNaN(registeredDate.getTime())) { //Is the date invald?
+      console.log('Bad date found:', user.registered.date); // Logs invalid date
+      return res.status(500).json({ error: 'Date from website is not good' });
+    }
+    const niceDate = registeredDate.toISOString().split('T')[0]; // Shows date as YYYY-MM-DD
+    const summary = `${user.login.username} (joined on ${niceDate})`; 
+
+    // Send back the username, date, and summary
+    res.json({
+      username: user.login.username,
+      registeredDate: niceDate,
+      summary: summary,
+    });
+  } catch (error) {
+    console.log('Problem getting data:', error); // Log errors
+    res.status(500).json({ error: 'Couldn’t get the data' }); // Retrn error message
+  }
+});
+
+// Start the server (Always at the end. Only once!)
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
